@@ -1,0 +1,106 @@
+---
+title: "week 03 Parllel Run"
+author: "Dhamodhar Reddy Atla"
+date: "2025-02-10"
+output: html_document
+---
+
+```{r}
+
+# install.packages("dplyr")
+# install.packages("readxl")
+
+```
+
+
+```{r}
+
+library(dplyr)
+library(readxl)
+
+```
+
+
+```{r}
+
+clinic_df <- read_excel("C:\\Users\\dhamo\\OneDrive\\Desktop\\HDS5230_submissions\\Week_03\\clinics.xls", sheet = "Results")
+
+```
+
+
+```{r}
+
+haversine <- function(lat1, lon1, lat2, lon2) {
+  MILES <- 3959
+  
+  # Convert inputs to numeric (if they are not already)
+  lat1 <- as.numeric(lat1)
+  lon1 <- as.numeric(lon1)
+  lat2 <- as.numeric(lat2)
+  lon2 <- as.numeric(lon2)
+  
+  # Convert degrees to radians
+  deg2rad <- function(deg) {
+    return(deg * pi / 180)
+  }
+  
+  lat1 <- deg2rad(lat1)
+  lon1 <- deg2rad(lon1)
+  lat2 <- deg2rad(lat2)
+  lon2 <- deg2rad(lon2)
+  
+  # Calculate differences
+  dlat <- lat2 - lat1
+  dlon <- lon2 - lon1
+  
+  # Haversine formula
+  a <- sin(dlat / 2)^2 + cos(lat1) * cos(lat2) * sin(dlon / 2)^2
+  c <- 2 * asin(sqrt(a))
+  
+  # Total distance in miles
+  total_miles <- MILES * c
+  return(total_miles)
+}
+
+```
+
+
+```{r}
+
+execution_time <- system.time({
+    clinic_df$distance <- apply(clinic_df, 1, function(row) {
+    haversine(40.671, -73.985, row['locLat'], row['locLong'])
+    })
+})
+
+print(execution_time)
+
+```
+
+
+```{r}
+
+execution_time <- system.time({
+
+    distances <- numeric(nrow(clinic_df))
+    for (i in 1:nrow(clinic_df)) {
+    distances[i] <- haversine(40.671, -73.985, clinic_df$locLat[i], clinic_df$locLong[i])
+    }
+    clinic_df$distance <- distances
+
+})
+
+print(execution_time)
+
+```
+
+
+```{r}
+
+execution_time <- system.time({
+    clinic_df$distance <- mapply(haversine, 40.671, -73.985, clinic_df$locLat, clinic_df$locLong)
+})
+
+print(execution_time)
+
+```
