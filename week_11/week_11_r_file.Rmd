@@ -1,0 +1,66 @@
+---
+title: "Week11"
+output: html_document
+date: "2025-04-28"
+---
+
+```{r}
+library(mlbench)
+library(purrr)
+library(xgboost)
+library(data.table)
+library(caret)
+library(cli)
+library(dplyr)
+```
+
+
+```{r}
+
+run_get_results_all_models <- function(sz) {
+  # Load and prepare original data
+  data("PimaIndiansDiabetes2")
+  ds <- as.data.frame(na.omit(PimaIndiansDiabetes2))
+  
+  # Fit logistic regression model
+  logmodel <- glm(diabetes ~ .,
+                  data = ds,
+                  family = "binomial")
+  
+  # Extract model components
+  cfs <- coefficients(logmodel)
+  prednames <- variable.names(ds)[-9]  # Remove the outcome column name
+  
+  # Generate bootstrap samples for each predictor
+  dfdata <- map_dfc(prednames,
+                   function(nm) {
+                     eval(parse(text = paste0("sample(ds$", nm,
+                                              ", size = sz, replace = T)")))
+                   })
+  
+  # Set column names
+  names(dfdata) <- prednames
+  
+  # Compute logit values and outcome probabilities
+  pvec <- map((1:length(prednames)),
+             function(pnum) {
+               cfs[pnum+1] * eval(parse(text = paste0("dfdata$",
+                                                      prednames[pnum])))
+             }) %>% 
+    reduce(`+`) + 
+    cfs[1]  # Add intercept
+  
+  # Add outcome column
+  dfdata['outcome'] <- ifelse(1/(1 + exp(-(pvec))) > 0.5, 1, 0)
+  
+  # Save to CSV if requested
+  file_path <- paste("sample_", sz,".csv", sep = "")
+  write.csv(dfdata, file_path, row.names = FALSE)
+  message(paste("Data saved to", file_path))
+
+  
+  
+  
+}
+
+```
